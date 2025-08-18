@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database for Langfuse
+  postgres:
+    image: postgres:15
+    container_name: wow-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-wowbot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-secure_password}
+      POSTGRES_DB: ${POSTGRES_DB:-wowactuality}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - wow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-wowbot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ChromaDB Vector Database
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: wow-chromadb
+    ports:
+      - "8000:8000"
+    environment:
+      - IS_PERSISTENT=TRUE
+      - PERSIST_DIRECTORY=/chroma/chroma
+    volumes:
+      - chromadb_data:/chroma/chroma
+    networks:
+      - wow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/heartbeat"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Langfuse Monitoring
+  langfuse:
+    image: langfuse/langfuse:latest
+    container_name: wow-langfuse
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-wowbot}:${POSTGRES_PASSWORD:-secure_password}@postgres:5432/${POSTGRES_DB:-wowactuality}
+      NEXTAUTH_SECRET: ${LANGFUSE_SECRET_KEY:-your_secret_key_here}
+      NEXTAUTH_URL: http://localhost:3000
+      LANGFUSE_ENABLE_EXPERIMENTAL_FEATURES: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - wow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/public/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # LiteLLM Gateway
+  litellm-gateway:
+    build:
+      context: ./litellm-gateway
+      dockerfile: Dockerfile
+    container_name: wow-litellm-gateway
+    ports:
+      - "4000:4000"
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-your_master_key}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+    volumes:
+      - ./litellm-gateway/config:/app/config
+    networks:
+      - wow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # API Service (LangChain + AI)
+  api-service:
+    build:
+      context: ./api-service
+      dockerfile: Dockerfile
+    container_name: wow-api-service
+    ports:
+      - "8000:8000"
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      CHROMADB_HOST: ${CHROMADB_HOST:-chromadb}
+      CHROMADB_PORT: ${CHROMADB_PORT:-8000}
+      LITELLM_GATEWAY_URL: ${LITELLM_GATEWAY_URL:-http://litellm-gateway:4000}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      chromadb:
+        condition: service_healthy
+      litellm-gateway:
+        condition: service_healthy
+      langfuse:
+        condition: service_healthy
+    networks:
+      - wow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Discord Bot
+  discord-bot:
+    build:
+      context: ./discord-bot
+      dockerfile: Dockerfile
+    container_name: wow-discord-bot
+    environment:
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      API_SERVICE_URL: ${API_SERVICE_URL:-http://api-service:8000}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      RATE_LIMIT_REQUESTS_PER_MINUTE: ${RATE_LIMIT_REQUESTS_PER_MINUTE:-60}
+      MAX_QUESTION_LENGTH: ${MAX_QUESTION_LENGTH:-500}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      api-service:
+        condition: service_healthy
+    networks:
+      - wow-network
+    restart: unless-stopped
+
+  # Web Crawler Service
+  crawler-service:
+    build:
+      context: ./crawler-service
+      dockerfile: Dockerfile
+    container_name: wow-crawler-service
+    environment:
+      CHROMADB_HOST: ${CHROMADB_HOST:-chromadb}
+      CHROMADB_PORT: ${CHROMADB_PORT:-8000}
+      BLIZZSPIRIT_BASE_URL: ${BLIZZSPIRIT_BASE_URL:-https://www.blizzspirit.com}
+      CRAWLER_INTERVAL_HOURS: ${CRAWLER_INTERVAL_HOURS:-6}
+      CRAWLER_MAX_ARTICLES: ${CRAWLER_MAX_ARTICLES:-100}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+    volumes:
+      - ./logs:/app/logs
+      - crawler_cache:/app/cache
+    depends_on:
+      chromadb:
+        condition: service_healthy
+    networks:
+      - wow-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+    driver: local
+  chromadb_data:
+    driver: local
+  crawler_cache:
+    driver: local
+
+networks:
+  wow-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

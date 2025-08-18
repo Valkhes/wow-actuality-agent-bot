@@ -1,0 +1,8 @@
+discord.py>=2.3.2
+aiohttp>=3.8.0
+python-dotenv>=1.0.0
+pydantic>=2.5.0
+structlog>=23.2.0
+colorama>=0.4.6
+fastapi>=0.104.0
+uvicorn>=0.24.0

@@ -1,0 +1,42 @@
+# Testing dependencies for WoW Actuality Bot
+
+# Core testing framework
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+pytest-timeout>=2.1.0
+pytest-mock>=3.11.1
+
+# HTTP testing
+httpx>=0.24.0
+requests>=2.31.0
+
+# Test reporting
+pytest-html>=3.2.0
+pytest-json-report>=1.5.0
+pytest-cov>=4.1.0
+
+# Performance testing
+pytest-benchmark>=4.0.0
+
+# Fixtures and utilities
+pytest-fixtures>=0.1.0
+
+# YAML support for config testing
+PyYAML>=6.0
+
+# Mock and testing utilities
+responses>=0.23.0
+freezegun>=1.2.0
+
+# Database testing utilities (if needed)
+# pytest-postgresql>=5.0.0
+
+# Discord testing utilities
+# unittest.mock is built-in, but these can help
+factory-boy>=3.3.0
+
+# Load testing
+aiohttp>=3.8.0
+
+# Utilities
+python-dotenv>=1.0.0

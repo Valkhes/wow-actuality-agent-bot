@@ -1,0 +1,79 @@
+# LiteLLM Gateway Security Configuration
+
+model_list:
+  - model_name: gemini-2.0-flash-exp
+    litellm_params:
+      model: gemini/gemini-2.0-flash-exp
+      api_key: os.environ/GOOGLE_API_KEY
+    model_info:
+      mode: chat
+      supports_function_calling: true
+      supports_vision: true
+
+router_settings:
+  routing_strategy: simple-shuffle
+  model_group_alias:
+    gpt-4: gemini-2.0-flash-exp
+
+litellm_settings:
+  telemetry: false
+  max_budget: 100
+  budget_duration: 30d
+  
+  # Request validation
+  request_timeout: 30
+  max_retries: 3
+  
+  # Content filtering
+  content_policy_fallbacks: ["block"]
+  
+  # Security settings
+  drop_params: true
+  add_function_to_prompt: false
+  
+  # Rate limiting
+  tpm_limit: 1000000  # tokens per minute
+  rpm_limit: 100      # requests per minute
+  max_parallel_requests: 10
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: sqlite:///litellm_logs.db
+  ui: true
+  
+  # Security headers
+  cors_origins: ["*"]
+  
+  # Logging
+  log_level: info
+  json_logs: true
+  
+  # Health checks
+  health_check: true
+  health_check_interval: 30
+
+# Custom security patterns (additional to hardcoded ones)
+custom_security:
+  blocked_patterns:
+    - pattern: "(?i)admin\\s+mode"
+      severity: HIGH
+      action: BLOCK
+    - pattern: "(?i)bypass\\s+safety"
+      severity: HIGH  
+      action: BLOCK
+    - pattern: "(?i)unrestricted\\s+access"
+      severity: MEDIUM
+      action: LOG
+      
+  allowed_domains:
+    - "*.blizzspirit.com"
+    - "localhost"
+    - "127.0.0.1"
+    
+  rate_limits:
+    default:
+      requests_per_minute: 60
+      tokens_per_minute: 10000
+    premium:
+      requests_per_minute: 200
+      tokens_per_minute: 50000

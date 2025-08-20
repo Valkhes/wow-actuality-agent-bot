@@ -95,3 +95,60 @@ class WoWAPI:
                 "redoc_url": "/redoc",
                 "openapi_url": "/openapi.json"
             }
+
+        @self.app.get("/monitoring/metrics")
+        async def get_monitoring_metrics():
+            """Get system metrics for monitoring dashboards"""
+            try:
+                # Get system status
+                status = await self.system_status_use_case.execute()
+                
+                # Get AI repository health if using LiteLLM
+                ai_health = True
+                ai_info = {}
+                
+                if hasattr(self.answer_question_use_case.ai_repository, 'health_check'):
+                    try:
+                        ai_health = await self.answer_question_use_case.ai_repository.health_check()
+                        if hasattr(self.answer_question_use_case.ai_repository, 'get_security_config'):
+                            ai_info = await self.answer_question_use_case.ai_repository.get_security_config()
+                    except Exception:
+                        ai_health = False
+                
+                return {
+                    "system_status": status,
+                    "ai_gateway": {
+                        "healthy": ai_health,
+                        "config": ai_info
+                    },
+                    "timestamp": status.get("timestamp")
+                }
+                
+            except Exception as e:
+                logger.error("Failed to get monitoring metrics", error=str(e), exc_info=True)
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "Failed to retrieve monitoring metrics"}
+                )
+
+        @self.app.get("/monitoring/usage")
+        async def get_usage_stats():
+            """Get usage statistics for monitoring"""
+            try:
+                # This would typically come from the monitoring repository
+                # For now, return basic placeholder data
+                return {
+                    "total_requests": "Available in Langfuse dashboard",
+                    "avg_response_time": "Available in Langfuse dashboard", 
+                    "error_rate": "Available in Langfuse dashboard",
+                    "token_usage": "Available in Langfuse dashboard",
+                    "cost_estimate": "Available in Langfuse dashboard",
+                    "langfuse_dashboard": "http://localhost:3000",
+                    "message": "Detailed usage metrics are available in the Langfuse dashboard"
+                }
+            except Exception as e:
+                logger.error("Failed to get usage stats", error=str(e), exc_info=True)
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "Failed to retrieve usage statistics"}
+                )

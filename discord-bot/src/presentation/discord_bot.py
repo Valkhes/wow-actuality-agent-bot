@@ -26,9 +26,9 @@ class WoWBot(commands.Bot):
     async def setup_hook(self):
         try:
             synced = await self.tree.sync()
-            logger.info(f"Synced {len(synced)} command(s)")
+            logger.info("Synced commands", command_count=len(synced))
         except Exception as e:
-            logger.error(f"Failed to sync commands: {e}")
+            logger.error("Failed to sync commands", error=str(e), error_type=type(e).__name__)
 
     async def on_ready(self):
         logger.info(
@@ -117,7 +117,7 @@ class WoWCog(commands.Cog):
             
         except RateLimitError as e:
             await interaction.followup.send(
-                "⚠️ You're asking questions too quickly! Please wait a minute before asking another question.",
+                "You're asking questions too quickly! Please wait a minute before asking another question.",
                 ephemeral=True
             )
             logger.warning(
@@ -128,7 +128,7 @@ class WoWCog(commands.Cog):
             
         except APIServiceError as e:
             await interaction.followup.send(
-                "❌ I'm having trouble getting information right now. Please try again in a moment.",
+                "I'm having trouble getting information right now. Please try again in a moment.",
                 ephemeral=True
             )
             logger.error(
@@ -139,7 +139,7 @@ class WoWCog(commands.Cog):
             
         except ValueError as e:
             await interaction.followup.send(
-                f"❌ {str(e)}",
+                f"Error: {str(e)}",
                 ephemeral=True
             )
             logger.warning(
@@ -150,7 +150,7 @@ class WoWCog(commands.Cog):
             
         except Exception as e:
             await interaction.followup.send(
-                "❌ An unexpected error occurred. Please try again later.",
+                "An unexpected error occurred. Please try again later.",
                 ephemeral=True
             )
             logger.error(
@@ -190,7 +190,7 @@ class WoWCog(commands.Cog):
         )
         
         embed.add_field(
-            name="💡 Example",
+            name="Example",
             value="`/ask What are the latest changes in Season of Discovery?`",
             inline=False
         )

@@ -2,6 +2,7 @@ import structlog
 from src.infrastructure.logging import configure_logging
 from src.infrastructure.chroma_repository import ChromaVectorRepository
 from src.infrastructure.gemini_repository import GeminiAIRepository
+from src.infrastructure.litellm_repository import LiteLLMAIRepository
 from src.infrastructure.langfuse_repository import LangfuseMonitoringRepository, NoOpMonitoringRepository
 from src.application.use_cases import AnswerWoWQuestionUseCase, GetSystemStatusUseCase
 from src.presentation.api import WoWAPI
@@ -31,12 +32,23 @@ def create_app():
         collection_name=settings.chromadb_collection
     )
     
-    ai_repository = GeminiAIRepository(
-        api_key=settings.google_api_key,
-        model_name=settings.ai_model_name,
-        temperature=settings.ai_temperature,
-        max_tokens=settings.ai_max_tokens
-    )
+    # Choose AI repository based on configuration
+    if settings.litellm_gateway_url:
+        logger.info("Using LiteLLM Gateway for AI repository")
+        ai_repository = LiteLLMAIRepository(
+            gateway_url=settings.litellm_gateway_url,
+            model_name=settings.ai_model_name,
+            temperature=settings.ai_temperature,
+            max_tokens=settings.ai_max_tokens
+        )
+    else:
+        logger.info("Using direct Gemini API for AI repository")
+        ai_repository = GeminiAIRepository(
+            api_key=settings.google_api_key,
+            model_name=settings.ai_model_name,
+            temperature=settings.ai_temperature,
+            max_tokens=settings.ai_max_tokens
+        )
     
     # Create monitoring repository (with fallback)
     try:

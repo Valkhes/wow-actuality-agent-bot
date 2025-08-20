@@ -67,7 +67,7 @@ class BlizzSpiritScrapingRepository(WebScrapingRepository):
             
             for selector in selectors:
                 links = soup.select(selector)
-                logger.debug(f"Found {len(links)} links with selector: {selector}")
+                logger.debug("Found links with selector", link_count=len(links), selector=selector)
                 
                 for link in links:
                     href = link.get('href')
@@ -83,7 +83,7 @@ class BlizzSpiritScrapingRepository(WebScrapingRepository):
                     # Filter for likely article URLs and avoid duplicates
                     if self._is_article_url(full_url) and full_url not in article_urls:
                         article_urls.append(full_url)
-                        logger.debug(f"Added article URL: {full_url}")
+                        logger.debug("Added article URL", url=full_url)
                         
                         if len(article_urls) >= max_articles:
                             break

@@ -8,8 +8,8 @@ from datetime import datetime
 from fastapi import HTTPException
 from litellm import completion
 
-from .models import ChatCompletionRequest
-from .security import SecurityMiddleware, get_security_alerts, get_security_config
+from models import ChatCompletionRequest
+from security import SecurityMiddleware, get_security_alerts, get_security_config
 
 logger = structlog.get_logger()
 

@@ -8,8 +8,8 @@ from datetime import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
 
-from .config import COMPILED_PATTERNS, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW
-from .models import SecurityAlert
+from config import COMPILED_PATTERNS, RATE_LIMIT_REQUESTS, RATE_LIMIT_WINDOW
+from models import SecurityAlert
 
 logger = structlog.get_logger()
 

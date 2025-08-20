@@ -44,7 +44,9 @@ The bot consists of multiple containerized services working together:
 - Discord Bot Token ([Create one here](https://discord.com/developers/applications))
 - Google Gemini API Key ([Get one here](https://makersuite.google.com/app/apikey))
 
-### Environment Setup
+### Automated Setup (Recommended)
+
+The easiest way to get started is with our automated setup script:
 
 1. **Clone the repository:**
 ```bash
@@ -52,24 +54,24 @@ git clone <repository-url>
 cd wow-actuality-agent-bot
 ```
 
-2. **Create environment file:**
+2. **Run the automated setup:**
 ```bash
-cp .env.template .env
-# Edit .env with your API keys (see configuration section below)
+chmod +x scripts/setup-first-launch.sh
+./scripts/setup-first-launch.sh
 ```
 
-3. **Start the services:**
+3. **Configure your API keys:**
+   Edit the generated `.env` file with your actual API keys:
 ```bash
-docker-compose up -d
+nano .env  # or use your preferred editor
 ```
+   Required keys:
+   - `DISCORD_BOT_TOKEN`: Your Discord bot token
+   - `GOOGLE_API_KEY`: Your Google Gemini API key
 
-4. **Verify deployment:**
+4. **Restart services with your configuration:**
 ```bash
-# Check all services are healthy
-./scripts/health_monitor.sh -a
-
-# View logs
-docker-compose logs -f
+docker-compose restart
 ```
 
 5. **Invite bot to Discord:**
@@ -78,6 +80,24 @@ docker-compose logs -f
    - Select "bot" and "applications.commands" scopes
    - Select "Send Messages" and "Use Slash Commands" permissions
    - Use generated URL to invite bot to your server
+
+### Alternative: Running Without Langfuse
+
+If you want to run the bot without Langfuse monitoring (simpler setup):
+
+```bash
+# Use the convenience script
+chmod +x scripts/start-without-langfuse.sh
+./scripts/start-without-langfuse.sh
+```
+
+This will:
+- Set up all databases automatically 
+- Skip Langfuse installation
+- Generate secure random keys
+- Start all core services
+
+The bot will automatically use `NoOpMonitoringRepository` instead of Langfuse when Langfuse is disabled.
 
 ### Required Environment Variables
 
@@ -91,9 +111,9 @@ GOOGLE_API_KEY=your_google_gemini_api_key
 # Security Configuration
 LITELLM_MASTER_KEY=your_secure_master_key_here
 
-# Monitoring Configuration
-LANGFUSE_SECRET_KEY=your_langfuse_secret
-LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
+# Monitoring Configuration (Optional - leave empty to disable)
+# LANGFUSE_SECRET_KEY=your_langfuse_secret  
+# LANGFUSE_PUBLIC_KEY=your_langfuse_public_key
 
 # Database Configuration
 POSTGRES_USER=wowbot

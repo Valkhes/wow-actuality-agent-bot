@@ -14,10 +14,10 @@ from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 import litellm
 
-from .config import MASTER_KEY, GOOGLE_API_KEY, LOG_LEVEL, ENVIRONMENT
-from .models import ChatCompletionRequest
-from .security import SecurityMiddleware
-from .handlers import (
+from config import MASTER_KEY, GOOGLE_API_KEY, LOG_LEVEL, ENVIRONMENT
+from models import ChatCompletionRequest
+from security import SecurityMiddleware
+from handlers import (
     health_check,
     get_alerts,
     get_config,

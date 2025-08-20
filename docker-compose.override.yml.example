@@ -1,0 +1,15 @@
+# Example override file to disable Langfuse monitoring
+# Copy this to docker-compose.override.yml to use it
+# 
+# This file allows you to run the stack without Langfuse
+# by commenting out the langfuse and postgres services
+
+version: '3.8'
+
+services:
+  # Comment out these services if you don't want Langfuse
+  # postgres:
+  #   profiles: ["disabled"]
+  
+  # langfuse:
+  #   profiles: ["disabled"]

@@ -94,7 +94,7 @@ services:
       GOOGLE_API_KEY: ${GOOGLE_API_KEY}
       CHROMADB_HOST: ${CHROMADB_HOST:-chromadb}
       CHROMADB_PORT: ${CHROMADB_PORT:-8000}
-      LITELLM_GATEWAY_URL: ${LITELLM_GATEWAY_URL:-http://litellm-gateway:4000}
+      LITELLM_GATEWAY_URL: ${LITELLM_GATEWAY_URL}
       LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY}
       LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY}
       LANGFUSE_HOST: ${LANGFUSE_HOST:-http://langfuse:3000}
@@ -144,6 +144,8 @@ services:
       context: ./crawler-service
       dockerfile: Dockerfile
     container_name: wow-crawler-service
+    ports:
+      - "8002:8002"
     environment:
       CHROMADB_HOST: ${CHROMADB_HOST:-chromadb}
       CHROMADB_PORT: ${CHROMADB_PORT:-8000}

@@ -7,6 +7,7 @@ import structlog
 import hashlib
 from urllib.parse import urljoin
 from asyncio_throttle import Throttler
+import xml.etree.ElementTree as ET
 
 from ..domain.entities import WoWArticle
 from ..domain.repositories import WebScrapingRepository
@@ -35,6 +36,64 @@ class BlizzSpiritScrapingRepository(WebScrapingRepository):
         }
 
     async def fetch_article_urls(self, base_url: str, max_articles: int) -> List[str]:
+        logger.info("Fetching article URLs from Blizzspirit", max_articles=max_articles)
+        
+        # Try RSS feed first (gets most recent articles chronologically)
+        rss_urls = await self._fetch_urls_from_rss(max_articles)
+        if rss_urls:
+            logger.info("Successfully fetched URLs from RSS feed", count=len(rss_urls))
+            return rss_urls
+        
+        # Fall back to homepage scraping
+        logger.warning("RSS feed failed, falling back to homepage scraping")
+        return await self._fetch_urls_from_homepage(base_url, max_articles)
+
+    async def _fetch_urls_from_rss(self, max_articles: int) -> List[str]:
+        """Fetch article URLs from RSS feed (chronologically ordered, newest first)"""
+        rss_url = f"{self.base_url}/feed/"
+        
+        try:
+            async with self.throttler:
+                async with aiohttp.ClientSession(
+                    timeout=self.timeout,
+                    headers=self.headers
+                ) as session:
+                    async with session.get(rss_url) as response:
+                        if response.status != 200:
+                            logger.error("Failed to fetch RSS feed", status=response.status, url=rss_url)
+                            return []
+                        
+                        xml_content = await response.text()
+            
+            # Parse RSS XML
+            try:
+                root = ET.fromstring(xml_content)
+                article_urls = []
+                
+                # Find all RSS items
+                for item in root.findall('.//item'):
+                    link_element = item.find('link')
+                    if link_element is not None:
+                        url = link_element.text
+                        if url and self._is_article_url(url):
+                            article_urls.append(url)
+                            
+                            if len(article_urls) >= max_articles:
+                                break
+                
+                logger.info("Extracted URLs from RSS feed", count=len(article_urls))
+                return article_urls
+                
+            except ET.ParseError as e:
+                logger.error("Failed to parse RSS XML", error=str(e))
+                return []
+                
+        except Exception as e:
+            logger.error("Failed to fetch RSS feed", error=str(e), exc_info=True)
+            return []
+
+    async def _fetch_urls_from_homepage(self, base_url: str, max_articles: int) -> List[str]:
+        """Fallback method: fetch article URLs from homepage"""
         logger.info("Fetching article URLs from Blizzspirit homepage", max_articles=max_articles)
         
         try:
@@ -91,11 +150,11 @@ class BlizzSpiritScrapingRepository(WebScrapingRepository):
                 if len(article_urls) >= max_articles:
                     break
             
-            logger.info("Found article URLs", count=len(article_urls))
+            logger.info("Found article URLs from homepage", count=len(article_urls))
             return article_urls[:max_articles]
             
         except Exception as e:
-            logger.error("Failed to fetch article URLs", error=str(e), exc_info=True)
+            logger.error("Failed to fetch article URLs from homepage", error=str(e), exc_info=True)
             return []
 
     async def extract_article_content(self, url: str) -> Optional[WoWArticle]:

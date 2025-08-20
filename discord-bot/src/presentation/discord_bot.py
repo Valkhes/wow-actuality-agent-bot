@@ -78,7 +78,7 @@ class WoWCog(commands.Cog):
             bot_user = BotUser(
                 id=str(interaction.user.id),
                 username=interaction.user.name,
-                discriminator=interaction.user.discriminator,
+                discriminator=getattr(interaction.user, 'discriminator', '0000') or '0000',
                 avatar_url=str(interaction.user.display_avatar.url) if interaction.user.display_avatar else None
             )
             

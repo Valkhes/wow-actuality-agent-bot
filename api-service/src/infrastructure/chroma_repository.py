@@ -128,3 +128,64 @@ class ChromaVectorRepository(VectorRepository):
                 "status": "error",
                 "error": str(e)
             }
+
+    async def get_collections_info(self) -> dict:
+        """Get information about all collections in ChromaDB"""
+        await self._ensure_connection()
+        
+        try:
+            collections = self.client.list_collections()
+            collections_data = []
+            
+            for collection in collections:
+                try:
+                    count = collection.count()
+                    collections_data.append({
+                        "name": collection.name,
+                        "document_count": count,
+                        "metadata": collection.metadata
+                    })
+                except Exception as e:
+                    collections_data.append({
+                        "name": collection.name,
+                        "document_count": "error",
+                        "error": str(e)
+                    })
+            
+            return {
+                "collections": collections_data,
+                "total_collections": len(collections_data)
+            }
+            
+        except Exception as e:
+            logger.error("Failed to get collections info", error=str(e), exc_info=True)
+            return {
+                "error": str(e),
+                "collections": []
+            }
+
+    async def get_documents(self, limit: int = 10, offset: int = 0) -> List[dict]:
+        """Get documents from the collection with pagination"""
+        await self._ensure_connection()
+        
+        try:
+            # Get all document IDs first to handle pagination
+            result = self.collection.get(
+                limit=limit,
+                offset=offset,
+                include=["documents", "metadatas", "ids"]
+            )
+            
+            documents = []
+            for i, doc_id in enumerate(result["ids"]):
+                documents.append({
+                    "id": doc_id,
+                    "content": result["documents"][i] if i < len(result["documents"]) else "",
+                    "metadata": result["metadatas"][i] if i < len(result["metadatas"]) else {}
+                })
+            
+            return documents
+            
+        except Exception as e:
+            logger.error("Failed to get documents", error=str(e), exc_info=True)
+            return []

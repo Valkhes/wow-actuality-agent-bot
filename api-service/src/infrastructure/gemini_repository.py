@@ -24,25 +24,14 @@ class GeminiAIRepository(AIRepository):
             max_tokens=max_tokens
         )
         
-        self.prompt_template = ChatPromptTemplate.from_messages([
-            SystemMessage(content="""You are a helpful World of Warcraft news assistant. 
-Your role is to provide accurate, up-to-date information about World of Warcraft based on the provided context.
+        # Simple prompt template with source URL citation request
+        self.prompt_template = """Answer this question about World of Warcraft: {question}
 
-Guidelines:
-- Answer questions clearly and concisely
-- Base your responses primarily on the provided context documents
-- If the context doesn't contain relevant information, say so politely
-- Keep responses under 500 words
-- Focus on factual information about WoW news, updates, and changes
-- Mention specific sources when relevant"""),
-            
-            HumanMessage(content="""Context documents:
+Use this information to help answer:
 {context}
 
-Question: {question}
-
-Please provide a helpful response based on the context above.""")
-        ])
+IMPORTANT: ALWAYS include the source article URLs at the end of your response. Provide at maximum 2 article URLs. Use the format:
+Sources: [URL1], [URL2]"""
 
     async def generate_response(
         self,
@@ -60,14 +49,59 @@ Please provide a helpful response based on the context above.""")
             # Prepare context from documents
             context_text = self._format_context(context_documents)
             
-            # Format the prompt
-            formatted_prompt = self.prompt_template.format_messages(
+            # Debug: Log context and question for debugging
+            logger.info(
+                "Debug - Context and question for Gemini",
+                context_preview=context_text[:300] if context_text else "No context",
+                question=question,
+                context_length=len(context_text) if context_text else 0
+            )
+            
+            # Format the prompt as simple string
+            formatted_prompt = self.prompt_template.format(
                 context=context_text,
                 question=question
             )
             
-            # Generate response
-            response = await self.llm.ainvoke(formatted_prompt)
+            # Debug: Print and log what we're sending to Gemini
+            print(f"=== DEBUG PROMPT TO GEMINI ===")
+            print(f"Question: {question}")
+            print(f"Formatted prompt length: {len(formatted_prompt)}")
+            print(f"Full formatted prompt: {formatted_prompt}")
+            print(f"=== END DEBUG ===")
+            
+            logger.info(
+                "Debug - Full HumanMessage being sent to Gemini",
+                full_prompt=formatted_prompt,
+                prompt_length=len(formatted_prompt),
+                question_original=question,
+                context_length=len(context_text) if context_text else 0
+            )
+            
+            # Generate response using simple text completion
+            human_message = HumanMessage(content=formatted_prompt)
+            logger.info(
+                "Debug - HumanMessage object",
+                message_content=human_message.content,
+                message_type=type(human_message).__name__
+            )
+            
+            response = await self.llm.ainvoke([human_message])
+            
+            # Debug: Print and log Gemini response
+            response_text = response.content if hasattr(response, 'content') else str(response)
+            print(f"=== DEBUG GEMINI RESPONSE ===")
+            print(f"Response type: {type(response).__name__}")
+            print(f"Response length: {len(response_text)}")
+            print(f"Full response: {response_text}")
+            print(f"=== END RESPONSE DEBUG ===")
+            
+            logger.info(
+                "Debug - Gemini raw response",
+                response_content=response_text,
+                response_length=len(response_text),
+                response_type=type(response).__name__
+            )
             
             # Extract source articles
             source_articles = [

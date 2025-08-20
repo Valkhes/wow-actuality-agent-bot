@@ -38,15 +38,15 @@ def add_error_tracking_processor(error_tracker):
 def add_request_context_processor():
     """Add request-specific context processor"""
     def processor(logger, name, event_dict):
-        request_id = structlog.contextvars.get_context().get("request_id")
+        request_id = structlog.contextvars.get_contextvars().get("request_id")
         if request_id:
             event_dict["request_id"] = request_id
         
-        user_id = structlog.contextvars.get_context().get("user_id")
+        user_id = structlog.contextvars.get_contextvars().get("user_id")
         if user_id:
             event_dict["user_id"] = user_id
         
-        trace_id = structlog.contextvars.get_context().get("trace_id")
+        trace_id = structlog.contextvars.get_contextvars().get("trace_id")
         if trace_id:
             event_dict["trace_id"] = trace_id
         

@@ -152,3 +152,36 @@ class WoWAPI:
                     status_code=503,
                     content={"error": "Failed to retrieve usage statistics"}
                 )
+
+        @self.app.get("/chromadb/collections")
+        async def get_chromadb_collections():
+            """Get ChromaDB collections information"""
+            try:
+                vector_repo = self.answer_question_use_case.vector_repository
+                collections_info = await vector_repo.get_collections_info()
+                return collections_info
+            except Exception as e:
+                logger.error("Failed to get ChromaDB collections", error=str(e), exc_info=True)
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "Failed to retrieve ChromaDB collections"}
+                )
+
+        @self.app.get("/chromadb/documents")
+        async def get_chromadb_documents(limit: int = 10, offset: int = 0):
+            """Get documents from ChromaDB collection"""
+            try:
+                vector_repo = self.answer_question_use_case.vector_repository
+                documents = await vector_repo.get_documents(limit=limit, offset=offset)
+                return {
+                    "documents": documents,
+                    "limit": limit,
+                    "offset": offset,
+                    "total_count": len(documents)
+                }
+            except Exception as e:
+                logger.error("Failed to get ChromaDB documents", error=str(e), exc_info=True)
+                return JSONResponse(
+                    status_code=503,
+                    content={"error": "Failed to retrieve ChromaDB documents"}
+                )

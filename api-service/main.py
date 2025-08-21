@@ -1,3 +1,4 @@
+import asyncio
 import structlog
 from src.infrastructure.logging import configure_logging
 from src.infrastructure.chroma_repository import ChromaVectorRepository
@@ -32,14 +33,8 @@ def create_app():
         collection_name=settings.chromadb_collection
     )
     
-    # Test ChromaDB connection at startup
-    try:
-        import asyncio
-        asyncio.get_event_loop().run_until_complete(vector_repository._ensure_connection())
-        logger.info("ChromaDB connection established successfully at startup")
-    except Exception as e:
-        logger.error("Failed to connect to ChromaDB at startup", error=str(e))
-        raise
+    # ChromaDB connection will be established on first request
+    logger.info("ChromaDB connection will be established on first request")
     
     # Choose AI repository based on configuration
     if settings.litellm_gateway_url:

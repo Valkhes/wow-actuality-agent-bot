@@ -1,7 +1,7 @@
 import structlog
 import httpx
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Optional, Union
 from ..domain.entities import VectorDocument, AIResponse
 from ..domain.repositories import AIRepository
 
@@ -125,11 +125,11 @@ Please provide a helpful response based on the context above."""
                     total_tokens=usage_info.get("total_tokens")
                 )
             
-            # Extract source articles
+            # Extract source articles with lower threshold to capture more relevant results
             source_articles = [
                 doc.metadata.get("url", doc.metadata.get("title", f"Document {doc.id}"))
                 for doc in context_documents
-                if doc.metadata.get("similarity_score", 0) > 0.7
+                if doc.metadata.get("similarity_score", 0) > 0.5  # Lower threshold from 0.7 to 0.5
             ]
             
             # Calculate confidence based on context relevance
@@ -216,7 +216,7 @@ Please provide a helpful response based on the context above."""
             )
             return False
 
-    async def get_security_config(self) -> Dict[str, Any]:
+    async def get_security_config(self) -> Dict[str, Union[str, bool, int, float, List, Dict]]:
         """Get security configuration from LiteLLM Gateway"""
         try:
             response = await self.client.get(f"{self.gateway_url}/security/config")
@@ -246,7 +246,12 @@ Please provide a helpful response based on the context above."""
                 context_part += f" (Source: {url})"
             if similarity:
                 context_part += f" (Relevance: {similarity:.2f})"
-            context_part += f"\nContent: {doc.content[:500]}...\n"
+            
+            # Show more content - up to 1000 characters instead of 500
+            content_preview = doc.content[:1000]
+            if len(doc.content) > 1000:
+                content_preview += "..."
+            context_part += f"\nContent: {content_preview}\n"
             
             context_parts.append(context_part)
         

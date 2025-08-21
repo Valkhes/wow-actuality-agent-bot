@@ -5,6 +5,18 @@ All notable changes to the Crawler service will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-08-21
+
+### Changed
+- Enhanced article chunking strategy with overlapping sliding window approach
+- Improved content preservation with larger chunk sizes (1500 chars) and significant overlap (300 chars)
+- Added comprehensive chunk metadata including position tracking and chunk indexing
+- Optimized vector storage with better chunk organization for improved retrieval
+
+### Fixed
+- Resolved content loss issues in article chunking by ensuring complete coverage
+- Improved word boundary detection to prevent mid-word cuts in chunks
+
 ## [1.0.1] - 2025-08-20
 
 ### Changed

@@ -34,12 +34,30 @@ class ChromaVectorRepository(VectorRepository):
                 try:
                     self.collection = self.client.get_collection(name=self.collection_name)
                     logger.info("Connected to existing ChromaDB collection", collection=self.collection_name)
+                    # Log article count at startup
+                    try:
+                        count = self.collection.count()
+                        logger.info(
+                            "ChromaDB startup status",
+                            collection_name=self.collection_name,
+                            available_articles=count,
+                            status="connected"
+                        )
+                    except Exception as e:
+                        logger.warning("Could not retrieve article count at startup", error=str(e))
                 except Exception:
                     self.collection = self.client.create_collection(
                         name=self.collection_name,
                         metadata={"description": "World of Warcraft articles and news"}
                     )
                     logger.info("Created new ChromaDB collection", collection=self.collection_name)
+                    # Log article count for new collection (should be 0)
+                    logger.info(
+                        "ChromaDB startup status", 
+                        collection_name=self.collection_name,
+                        available_articles=0,
+                        status="created_new"
+                    )
                     
             except Exception as e:
                 logger.error("Failed to connect to ChromaDB", error=str(e), exc_info=True)
@@ -49,31 +67,56 @@ class ChromaVectorRepository(VectorRepository):
         await self._ensure_connection()
         
         try:
-            results = self.collection.query(
-                query_texts=[query],
-                n_results=k,
-                include=["documents", "metadatas", "distances"]
-            )
+            # Enhance query with synonyms and translations for better retrieval
+            enhanced_queries = self._enhance_query(query)
             
+            # Search with multiple query variants
+            all_results = []
+            for enhanced_query in enhanced_queries:
+                results = self.collection.query(
+                    query_texts=[enhanced_query],
+                    n_results=k,
+                    include=["documents", "metadatas", "distances"]
+                )
+                all_results.append((results, enhanced_query))
+            
+            # Combine and deduplicate results
             documents = []
-            if results["documents"] and results["documents"][0]:
-                for i, doc in enumerate(results["documents"][0]):
-                    metadata = results["metadatas"][0][i] if results["metadatas"] else {}
-                    distance = results["distances"][0][i] if results["distances"] else None
-                    
-                    # Add similarity score (inverse of distance)
-                    if distance is not None:
-                        metadata["similarity_score"] = 1 / (1 + distance)
-                    
-                    documents.append(VectorDocument(
-                        id=results["ids"][0][i] if results["ids"] else f"doc_{i}",
-                        content=doc,
-                        metadata=metadata
-                    ))
+            seen_ids = set()
+            
+            for results, used_query in all_results:
+                if results["documents"] and results["documents"][0]:
+                    for i, doc in enumerate(results["documents"][0]):
+                        doc_id = results["ids"][0][i] if results["ids"] else f"doc_{i}"
+                        
+                        # Skip duplicates
+                        if doc_id in seen_ids:
+                            continue
+                        seen_ids.add(doc_id)
+                        
+                        metadata = results["metadatas"][0][i] if results["metadatas"] else {}
+                        distance = results["distances"][0][i] if results["distances"] else None
+                        
+                        # Add similarity score (inverse of distance)
+                        if distance is not None:
+                            metadata["similarity_score"] = 1 / (1 + distance)
+                        
+                        metadata["matched_query"] = used_query
+                        
+                        documents.append(VectorDocument(
+                            id=doc_id,
+                            content=doc,
+                            metadata=metadata
+                        ))
+            
+            # Sort by similarity score and limit to k results
+            documents.sort(key=lambda x: x.metadata.get("similarity_score", 0), reverse=True)
+            documents = documents[:k]
             
             logger.info(
                 "Retrieved similar documents from ChromaDB",
                 query_length=len(query),
+                enhanced_queries_count=len(enhanced_queries),
                 retrieved_count=len(documents),
                 requested_count=k
             )
@@ -88,6 +131,39 @@ class ChromaVectorRepository(VectorRepository):
                 exc_info=True
             )
             return []
+    
+    def _enhance_query(self, query: str) -> List[str]:
+        """Enhance query with variations for better retrieval"""
+        enhanced = [query]  # Original query first
+        
+        query_lower = query.lower()
+        
+        # Add query variations without word boundaries
+        query_words = query_lower.split()
+        
+        # Add individual significant words as separate queries
+        significant_words = [word for word in query_words if len(word) > 3]
+        for word in significant_words:
+            if word not in enhanced:
+                enhanced.append(word)
+        
+        # Add partial matches by removing common French articles/prepositions
+        stop_words = ["le", "la", "les", "de", "des", "du", "sur", "pour", "dans", "avec"]
+        filtered_words = [word for word in query_words if word not in stop_words]
+        if len(filtered_words) > 1:
+            filtered_query = " ".join(filtered_words)
+            if filtered_query not in enhanced:
+                enhanced.append(filtered_query)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        result = []
+        for item in enhanced:
+            if item.lower() not in seen and item.strip():
+                seen.add(item.lower())
+                result.append(item)
+        
+        return result[:3]  # Limit to 3 queries to avoid too many API calls
 
     async def add_document(self, document: VectorDocument) -> None:
         await self._ensure_connection()

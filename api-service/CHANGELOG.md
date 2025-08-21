@@ -5,6 +5,20 @@ All notable changes to the API service will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.1] - 2025-08-20
+
+### Changed
+- Enhanced ChromaDB repository with improved query processing and multi-query search
+- Added enhanced query functionality with French stop-word filtering for better retrieval
+- Improved context formatting in LiteLLM repository with longer content previews (1000 chars)
+- Updated similarity score threshold for source articles to capture more relevant results
+- Added comprehensive debugging and logging throughout AI repositories
+- Enhanced confidence calculation algorithms for better response quality assessment
+
+### Fixed
+- Improved vector document search with deduplication and better scoring
+- Enhanced error handling and fallback responses in AI repositories
+
 ## [1.0.0] - 2023-12-01
 
 ### Added

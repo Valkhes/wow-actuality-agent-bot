@@ -24,14 +24,18 @@ class GeminiAIRepository(AIRepository):
             max_tokens=max_tokens
         )
         
-        # Simple prompt template with source URL citation request
+        # Focused prompt template that emphasizes using the best single source
         self.prompt_template = """Answer this question about World of Warcraft: {question}
 
 Use this information to help answer:
 {context}
 
-IMPORTANT: ALWAYS include the source article URLs at the end of your response. Provide at maximum 2 article URLs. Use the format:
-Sources: [URL1], [URL2]"""
+IMPORTANT INSTRUCTIONS:
+- Focus your answer on the MOST RELEVANT document that best answers the question
+- Provide a precise, accurate answer based primarily on that single best source
+- Be concise and specific rather than trying to combine multiple sources
+- ALWAYS include the source article URL at the end of your response from the most relevant document
+- Use the format: Source: [URL]"""
 
     async def generate_response(
         self,
@@ -63,16 +67,8 @@ Sources: [URL1], [URL2]"""
                 question=question
             )
             
-            # Debug: Print and log what we're sending to Gemini
-            print(f"=== DEBUG PROMPT TO GEMINI ===")
-            print(f"Question: {question}")
-            print(f"Formatted prompt length: {len(formatted_prompt)}")
-            print(f"Full formatted prompt: {formatted_prompt}")
-            print(f"=== END DEBUG ===")
-            
-            logger.info(
-                "Debug - Full HumanMessage being sent to Gemini",
-                full_prompt=formatted_prompt,
+            logger.debug(
+                "Sending request to Gemini",
                 prompt_length=len(formatted_prompt),
                 question_original=question,
                 context_length=len(context_text) if context_text else 0
@@ -80,25 +76,14 @@ Sources: [URL1], [URL2]"""
             
             # Generate response using simple text completion
             human_message = HumanMessage(content=formatted_prompt)
-            logger.info(
-                "Debug - HumanMessage object",
-                message_content=human_message.content,
-                message_type=type(human_message).__name__
-            )
             
             response = await self.llm.ainvoke([human_message])
             
-            # Debug: Print and log Gemini response
+            # Extract and log response
             response_text = response.content if hasattr(response, 'content') else str(response)
-            print(f"=== DEBUG GEMINI RESPONSE ===")
-            print(f"Response type: {type(response).__name__}")
-            print(f"Response length: {len(response_text)}")
-            print(f"Full response: {response_text}")
-            print(f"=== END RESPONSE DEBUG ===")
             
-            logger.info(
-                "Debug - Gemini raw response",
-                response_content=response_text,
+            logger.debug(
+                "Received Gemini response",
                 response_length=len(response_text),
                 response_type=type(response).__name__
             )

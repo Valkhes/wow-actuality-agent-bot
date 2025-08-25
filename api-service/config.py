@@ -34,8 +34,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     debug: bool = False
     
-    # API Configuration
-    api_port: int = 8000
+    # API Configuration - Railway uses dynamic PORT
+    api_port: int = int(os.environ.get("PORT", 8000))
     api_host: str = "0.0.0.0"
     
     class Config:

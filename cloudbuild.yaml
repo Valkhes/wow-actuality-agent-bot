@@ -1,0 +1,112 @@
+steps:
+  # Build and deploy API service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/wow-api-service:$BUILD_ID'
+      - './api-service'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/wow-api-service:$BUILD_ID'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'wow-api-service'
+      - '--image=gcr.io/$PROJECT_ID/wow-api-service:$BUILD_ID'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--max-instances=10'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--concurrency=1000'
+      - '--timeout=300'
+      - '--set-env-vars=VECTOR_STORE_TYPE=firestore,GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID'
+
+  # Build and deploy Discord bot
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/wow-discord-bot:$BUILD_ID'
+      - './discord-bot'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/wow-discord-bot:$BUILD_ID'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'wow-discord-bot'
+      - '--image=gcr.io/$PROJECT_ID/wow-discord-bot:$BUILD_ID'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--no-allow-unauthenticated'
+      - '--max-instances=1'
+      - '--memory=512Mi'
+      - '--cpu=0.5'
+      - '--concurrency=1'
+      - '--timeout=600'
+      - '--set-env-vars=API_SERVICE_URL=https://wow-api-service-[HASH]-uc.a.run.app'
+
+  # Build and deploy Crawler service
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/wow-crawler-service:$BUILD_ID'
+      - './crawler-service'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/wow-crawler-service:$BUILD_ID'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'wow-crawler-service'
+      - '--image=gcr.io/$PROJECT_ID/wow-crawler-service:$BUILD_ID'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--no-allow-unauthenticated'
+      - '--max-instances=1'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--concurrency=1'
+      - '--timeout=3600'
+      - '--set-env-vars=VECTOR_STORE_TYPE=firestore,GOOGLE_CLOUD_PROJECT_ID=$PROJECT_ID'
+
+  # Build and deploy LiteLLM Gateway
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '-t'
+      - 'gcr.io/$PROJECT_ID/wow-litellm-gateway:$BUILD_ID'
+      - './litellm-gateway'
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - 'gcr.io/$PROJECT_ID/wow-litellm-gateway:$BUILD_ID'
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'wow-litellm-gateway'
+      - '--image=gcr.io/$PROJECT_ID/wow-litellm-gateway:$BUILD_ID'
+      - '--region=us-central1'
+      - '--platform=managed'
+      - '--no-allow-unauthenticated'
+      - '--max-instances=3'
+      - '--memory=512Mi'
+      - '--cpu=1'
+      - '--concurrency=1000'
+      - '--timeout=300'
+
+options:
+  machineType: 'E2_HIGHCPU_8'
+
+timeout: 1200s

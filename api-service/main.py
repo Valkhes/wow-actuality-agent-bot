@@ -2,6 +2,7 @@ import asyncio
 import structlog
 from src.infrastructure.logging import configure_logging
 from src.infrastructure.chroma_repository import ChromaVectorRepository
+from src.infrastructure.firestore_vector_repository import FirestoreVectorRepository
 from src.infrastructure.gemini_repository import GeminiAIRepository
 from src.infrastructure.litellm_repository import LiteLLMAIRepository
 from src.infrastructure.langfuse_repository import LangfuseMonitoringRepository, NoOpMonitoringRepository
@@ -22,19 +23,27 @@ def create_app():
         "Starting WoW API Service",
         environment=settings.environment,
         log_level=settings.log_level,
-        chromadb_host=settings.chromadb_host,
+        vector_store_type=settings.vector_store_type,
         ai_model=settings.ai_model_name
     )
     
-    # Create repositories
-    vector_repository = ChromaVectorRepository(
-        host=settings.chromadb_host,
-        port=settings.chromadb_port,
-        collection_name=settings.chromadb_collection
-    )
+    # Create vector repository based on configuration
+    if settings.vector_store_type == "firestore":
+        logger.info("Using Firestore for vector repository")
+        vector_repository = FirestoreVectorRepository(
+            project_id=settings.google_cloud_project_id,
+            collection_name=settings.firestore_collection
+        )
+    else:
+        logger.info("Using ChromaDB for vector repository")
+        vector_repository = ChromaVectorRepository(
+            host=settings.chromadb_host,
+            port=settings.chromadb_port,
+            collection_name=settings.chromadb_collection
+        )
     
-    # ChromaDB connection will be established on first request
-    logger.info("ChromaDB connection will be established on first request")
+    # Vector store connection will be established on first request
+    logger.info(f"{settings.vector_store_type} connection will be established on first request")
     
     # Choose AI repository based on configuration
     if settings.litellm_gateway_url:

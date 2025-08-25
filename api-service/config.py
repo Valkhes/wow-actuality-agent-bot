@@ -7,7 +7,12 @@ class Settings(BaseSettings):
     # Google/Gemini Configuration
     google_api_key: str
     
-    # ChromaDB Configuration
+    # Vector Database Configuration (Firestore for Cloud Run)
+    vector_store_type: str = "firestore"  # "firestore" or "chromadb"
+    google_cloud_project_id: Optional[str] = None
+    firestore_collection: str = "wow_articles"
+    
+    # ChromaDB Configuration (fallback for local development)
     chromadb_host: str = "chromadb"
     chromadb_port: int = 8000
     chromadb_collection: str = "wow_articles"

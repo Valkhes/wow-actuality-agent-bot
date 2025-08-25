@@ -6,8 +6,10 @@ from contextlib import asynccontextmanager
 from src.infrastructure.logging import configure_logging
 from src.infrastructure.blizzspirit_scraper import BlizzSpiritScrapingRepository
 from src.infrastructure.chroma_vector_store import ChromaVectorStoreRepository
+from src.infrastructure.firestore_vector_store import FirestoreVectorStoreRepository
 from src.infrastructure.memory_article_repository import InMemoryArticleRepository
 from src.infrastructure.file_cache import FileCacheRepository
+from src.infrastructure.firestore_cache import FirestoreCacheRepository
 from src.application.use_cases import CrawlArticlesUseCase, GetCrawlerStatsUseCase
 from src.presentation.api import CrawlerAPI
 from src.presentation.scheduler import CrawlScheduler
@@ -50,6 +52,7 @@ def create_app():
         "Starting WoW Crawler Service",
         environment=settings.environment,
         log_level=settings.log_level,
+        vector_store_type=settings.vector_store_type,
         base_url=settings.blizzspirit_base_url,
         interval_hours=settings.crawler_interval_hours,
         max_articles=settings.crawler_max_articles
@@ -62,17 +65,35 @@ def create_app():
         timeout=settings.request_timeout
     )
     
-    vector_store_repository = ChromaVectorStoreRepository(
-        host=settings.chromadb_host,
-        port=settings.chromadb_port,
-        collection_name=settings.chromadb_collection
-    )
+    # Create vector store repository based on configuration
+    if settings.vector_store_type == "firestore":
+        logger.info("Using Firestore for vector store repository")
+        vector_store_repository = FirestoreVectorStoreRepository(
+            project_id=settings.google_cloud_project_id,
+            collection_name=settings.firestore_collection
+        )
+    else:
+        logger.info("Using ChromaDB for vector store repository")
+        vector_store_repository = ChromaVectorStoreRepository(
+            host=settings.chromadb_host,
+            port=settings.chromadb_port,
+            collection_name=settings.chromadb_collection
+        )
     
     article_repository = InMemoryArticleRepository()
     
-    cache_repository = FileCacheRepository(
-        cache_file=settings.cache_file
-    )
+    # Create cache repository based on configuration
+    if settings.vector_store_type == "firestore":
+        logger.info("Using Firestore for cache repository")
+        cache_repository = FirestoreCacheRepository(
+            project_id=settings.google_cloud_project_id,
+            collection_name="crawler_cache"
+        )
+    else:
+        logger.info("Using file-based cache repository")
+        cache_repository = FileCacheRepository(
+            cache_file=settings.cache_file
+        )
     
     # Create use cases
     crawl_articles_use_case = CrawlArticlesUseCase(

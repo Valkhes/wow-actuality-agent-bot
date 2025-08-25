@@ -1,0 +1,182 @@
+# Individual Cloud Run service configurations
+# Deploy each service separately using these configurations
+
+# API Service
+---
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: wow-api-service
+  labels:
+    app: wow-actuality-bot
+  annotations:
+    run.googleapis.com/ingress: all
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containerConcurrency: 1000
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/PROJECT_ID/wow-api-service:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: VECTOR_STORE_TYPE
+          value: "firestore"
+        - name: GOOGLE_CLOUD_PROJECT_ID
+          value: "PROJECT_ID"
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: google-api-key
+              key: key
+        - name: LANGFUSE_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: langfuse-keys
+              key: secret_key
+        - name: LANGFUSE_PUBLIC_KEY
+          valueFrom:
+            secretKeyRef:
+              name: langfuse-keys
+              key: public_key
+        - name: LANGFUSE_HOST
+          value: "https://cloud.langfuse.com"
+        - name: LITELLM_GATEWAY_URL
+          value: "https://wow-litellm-gateway-[HASH]-uc.a.run.app"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "0.5"
+            memory: "512Mi"
+
+---
+# Discord Bot Service
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: wow-discord-bot
+  labels:
+    app: wow-actuality-bot
+  annotations:
+    run.googleapis.com/ingress: none
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containerConcurrency: 1
+      timeoutSeconds: 600
+      containers:
+      - image: gcr.io/PROJECT_ID/wow-discord-bot:latest
+        env:
+        - name: DISCORD_BOT_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: discord-token
+              key: token
+        - name: API_SERVICE_URL
+          value: "https://wow-api-service-[HASH]-uc.a.run.app"
+        - name: RATE_LIMIT_REQUESTS_PER_MINUTE
+          value: "10"
+        - name: MAX_QUESTION_LENGTH
+          value: "500"
+        resources:
+          limits:
+            cpu: "0.5"
+            memory: "512Mi"
+          requests:
+            cpu: "0.1"
+            memory: "256Mi"
+
+---
+# Crawler Service
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: wow-crawler-service
+  labels:
+    app: wow-actuality-bot
+  annotations:
+    run.googleapis.com/ingress: none
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containerConcurrency: 1
+      timeoutSeconds: 3600
+      containers:
+      - image: gcr.io/PROJECT_ID/wow-crawler-service:latest
+        ports:
+        - containerPort: 8002
+        env:
+        - name: VECTOR_STORE_TYPE
+          value: "firestore"
+        - name: GOOGLE_CLOUD_PROJECT_ID
+          value: "PROJECT_ID"
+        - name: BLIZZSPIRIT_BASE_URL
+          value: "https://www.blizzspirit.com"
+        - name: CRAWLER_INTERVAL_HOURS
+          value: "6"
+        - name: CRAWLER_MAX_ARTICLES
+          value: "50"
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "0.5"
+            memory: "512Mi"
+
+---
+# LiteLLM Gateway Service
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: wow-litellm-gateway
+  labels:
+    app: wow-actuality-bot
+  annotations:
+    run.googleapis.com/ingress: none
+spec:
+  template:
+    metadata:
+      annotations:
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/execution-environment: gen2
+    spec:
+      containerConcurrency: 1000
+      timeoutSeconds: 300
+      containers:
+      - image: gcr.io/PROJECT_ID/wow-litellm-gateway:latest
+        ports:
+        - containerPort: 4000
+        env:
+        - name: LITELLM_MASTER_KEY
+          valueFrom:
+            secretKeyRef:
+              name: litellm-master-key
+              key: key
+        - name: GOOGLE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: google-api-key
+              key: key
+        resources:
+          limits:
+            cpu: "1"
+            memory: "512Mi"
+          requests:
+            cpu: "0.5"
+            memory: "256Mi"
